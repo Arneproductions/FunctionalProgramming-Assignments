@@ -29,3 +29,20 @@ let rec bin = function
     | n, k when n = k -> 1
     | n, k -> bin(n-1, k-1)+bin(n-1, k);;
 
+// Exercise 1.8
+let timediff (h1, m1) (h2, m2) = (h2*60+m2)-(h1*60+m1);;
+
+// Exercise 1.9
+let minutes time = timediff (0, 0) time;;
+
+// Exercise 1.10
+let curry f x y = f(x, y);;
+
+let uncurry f (x,y) = f x y;;
+
+// 1.11
+let empty (letter:char, pointValue:int) = fun (pos:int) -> (letter, pointValue);;
+// let letterA = empty('A', 1);;  
+
+// 1.12
+let add (newPos:int) (cv:(char * int)) word = fun pos -> if pos = newPos then cv else word newPos;;
