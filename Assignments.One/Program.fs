@@ -19,9 +19,9 @@ let rec fib = function
 let dup value:string = value+value;;
 
 // Exercise 1.6
-let rec dupn (value:string) times = 
-    if times = 1 then value
-    else value + dupn value (times-1);;
+let rec dupn (value:string) = function
+    | 0 -> ""
+    | n -> value + dupn value (n-1);;
 
 // Exercise 1.7
 let rec bin = function
