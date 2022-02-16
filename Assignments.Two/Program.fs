@@ -57,3 +57,26 @@ let rec ack = function
     | (m, n) when m > 0 && n > 0 -> ack(m-1, ack(m, n-1));;
 
 // Exercise 2.9
+ 
+let time f =
+    let start = System.DateTime.Now
+    let res = f ()
+    let finish = System.DateTime.Now
+    (res, finish - start);;
+
+let timeArg1 f a = 
+    time (fun () -> f a);;
+
+// Exercise 2.10 (Credit til min egen borup dreng)
+let rec downto3 f n e =
+    if n > 0 then 
+        let rec evalf f n e = function
+            | i when i < n -> (evalf f n e (i+1)) |> f i
+            | _ -> f n e
+
+        evalf f n e 1
+    else 
+        e
+
+let fac n = downto3 (*) n 1;;
+let range a n = downto3 (fun b c -> a b::c) n [];;
