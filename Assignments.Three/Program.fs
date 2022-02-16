@@ -34,6 +34,12 @@ let rec arithEvalState = function
     | Mul (aExp', bExp') -> binop (*) (arithEvalState aExp') (arithEvalState bExp');;
 
 // Exercise 3.3
+let arithSingleLetterScore = PV (V "_pos_") .+. (V "_acc_");;
+let arithDoubleLetterScore = ((N 2) .*. PV (V "_pos_")) .+. (V "_acc_");;
+let arithTripleLetterScore = ((N 3) .*. PV (V "_pos_")) .+. (V "_acc_");;
+let arithDoubleWordScore = N 2 .*. V "_acc_";;
+let arithTripleWordScore = N 3 .*. V "_acc_";;
+
 type word = (char * int) list;;
 
 let hello = [('H', 4); ('E', 1); ('L', 1); ('L', 1); ('O', 1); ];;
@@ -86,11 +92,11 @@ let (.<=.) a b = a .<. b .||. ~~(a .<>. b) (* numeric less than or equal to *)
 let (.>=.) a b = ~~(a .<. b) (* numeric greater than or equal to *)
 let (.>.) a b = ~~(a .=. b) .&&. (a .>=. b) (* numeric greater than *)
 
-module CharAnt = 
 
-    let private vowels = Set.ofList ['A'; 'E'; 'I'; 'O'; 'U';]
 
-    let isVowel = System.Char.ToUpper >> vowels.Contains
+let vowels = Set.ofList ['A'; 'E'; 'I'; 'O'; 'U';]
+
+let isVowel = System.Char.ToUpper >> vowels.Contains
 
 let rec boolEval exp wd = 
     match exp with
@@ -102,6 +108,6 @@ let rec boolEval exp wd =
     | Conj (a, b)   -> binop (&&) (boolEval a wd) (boolEval b wd)
     | IsDigit a     -> charEval a wd >> System.Char.IsDigit
     | IsLetter a    -> charEval a wd >> System.Char.IsLetter
-    | IsVowel a     -> charEval a wd >> CharAnt.isVowel
+    | IsVowel a     -> charEval a wd >> isVowel
 
 
