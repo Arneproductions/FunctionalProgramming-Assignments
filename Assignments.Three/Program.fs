@@ -92,11 +92,10 @@ let (.<=.) a b = a .<. b .||. ~~(a .<>. b) (* numeric less than or equal to *)
 let (.>=.) a b = ~~(a .<. b) (* numeric greater than or equal to *)
 let (.>.) a b = ~~(a .=. b) .&&. (a .>=. b) (* numeric greater than *)
 
-
-
-let vowels = Set.ofList ['A'; 'E'; 'I'; 'O'; 'U';]
-
-let isVowel = System.Char.ToUpper >> vowels.Contains
+let isVowel c = 
+    match System.Char.ToUpper c with 
+    | 'A' | 'E' | 'I' | 'O' | 'U' -> true
+    | _ -> false;;
 
 let rec boolEval exp wd = 
     match exp with
@@ -110,4 +109,28 @@ let rec boolEval exp wd =
     | IsLetter a    -> charEval a wd >> System.Char.IsLetter
     | IsVowel a     -> charEval a wd >> isVowel
 
+// Exercise 3.6
+let isConsonant c = Not (IsVowel (c));;
 
+// Exercise 3.7
+type stmnt =
+    | Skip                        (* does nothing *)
+    | Ass of string * aExp        (* variable assignment *)
+    | Seq of stmnt * stmnt        (* sequential composition *)
+    | ITE of bExp * stmnt * stmnt (* if-then-else statement *)    
+    | While of bExp * stmnt;;     (* while statement *)
+
+let rec evalStmnt s wd st = 
+    match s with
+    | Skip            -> st
+    | Ass (a, b)      -> Map.add a (arithEval b wd st) st
+    | Seq (a, b)      -> evalStmnt a wd st |> evalStmnt b wd
+    | ITE (a, b, c)   -> if boolEval a wd st then evalStmnt b wd st else evalStmnt c wd st
+    | While (a, b)    -> if boolEval a wd st then evalStmnt b wd st |> evalStmnt s wd else st;;
+
+// Exercise 3.8
+type squareFun = word -> int -> int -> int;;
+
+let stmntToSquareFun stmnt: squareFun = fun wd (pos:int) (acc:int) -> evalStmnt stmnt wd (Map.ofList [("_pos_", pos); ("_acc_", acc)]) |> Map.find "_result_";;
+
+// Exercise 3.9
