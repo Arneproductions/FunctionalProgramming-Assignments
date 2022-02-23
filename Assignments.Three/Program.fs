@@ -80,6 +80,7 @@ type bExp =
     | IsDigit of cExp (* check for digit *)
     | IsLetter of cExp (* check for letter *)
     | IsVowel of cExp (* check for vowel *)
+    | IsEven of aExp (* check if the result of arithmic exp is even *)
 
 let (~~) b = Not b
 let (.&&.) b1 b2 = Conj (b1, b2)
@@ -108,6 +109,7 @@ let rec boolEval exp wd =
     | IsDigit a     -> charEval a wd >> System.Char.IsDigit
     | IsLetter a    -> charEval a wd >> System.Char.IsLetter
     | IsVowel a     -> charEval a wd >> isVowel
+    | IsEven a      -> arithEval a wd >> (%) 2 >> (=) 0
 
 // Exercise 3.6
 let isConsonant c = Not (IsVowel (c));;
@@ -134,3 +136,14 @@ type squareFun = word -> int -> int -> int;;
 let stmntToSquareFun stmnt: squareFun = fun wd (pos:int) (acc:int) -> evalStmnt stmnt wd (Map.ofList [("_pos_", pos); ("_acc_", acc)]) |> Map.find "_result_";;
 
 // Exercise 3.9
+let oddConsonants = (Seq ((While ((V "I" .<. WL),  
+                        ITE (isConsonant (CV (V "i")), 
+                            Ass("numC", (V "numC" .+. N 1)), 
+                            Skip))),
+                        ITE (~~ (IsEven (V "numC")), 
+                            Ass("_result_", V "_result_" .-. (V "_result_" .*. N 2)),
+                            Skip)));;
+
+// Exercise 3.10
+type square = (int * squareFun) list;;
+type square2 = (int * stmnt) list;;
