@@ -50,6 +50,12 @@ let fibC =
     aux id;;
 
 // Exercise 5.6
+(* The issue here was the the continuation function did not have the append evaluation inside as a parameter but was rather a
+ part of the parameter: 
+ Before: fun res -> 1 :: c res)
+ Now   : fun res -> c (1 :: res))
+ *)
+
 let rec bigListK c = function
     | 0 -> c []
     | n -> bigListK (fun res -> c (1 :: res)) (n-1);;
