@@ -45,7 +45,11 @@
     let push : SM<unit> = 
         S (fun s -> Success ((), {s with vars = Map.empty :: s.vars}))
 
-    let pop : SM<unit> = S(fun s -> Success((), {s with vars = List.removeAt 0 s.vars}))     
+    let removeFirst = function
+        | [] -> []
+        | _ :: xs -> xs
+
+    let pop : SM<unit> = S(fun s -> Success((), {s with vars = removeFirst s.vars}))     
 
     let wordLength : SM<int> = S(fun s -> Success(s.word.Length, s))      
 
@@ -78,7 +82,7 @@
         let isDeclared (s: State) = Set.contains var s.reserved
 
         S(fun s -> if not(isDeclared s) then 
-                        if not(s.vars.Head.ContainsKey var) then Success((), {s with vars = List.updateAt 0 (Map.add var 0 s.vars.Head) s.vars})
+                        if not(s.vars.Head.ContainsKey var) then Success((), {s with vars = List.mapi (fun i a -> if i = 0 then Map.add var 0 s.vars.Head else a) s.vars})
                         else Failure (VarExists var)
                    else Failure (ReservedName var))
 
@@ -86,7 +90,7 @@
     let update (var : string) (value : int) : SM<unit> = 
         S (fun t -> 
               match List.tryFindIndex (fun x -> Map.containsKey var x) t.vars with
-              | Some v -> Success ((), {t with vars = List.updateAt v (Map.add var value t.vars.[v]) t.vars})
+              | Some v -> Success ((), {t with vars = List.mapi (fun i a -> if i = v then Map.add var value t.vars.[v] else a) t.vars})
               | None   -> Failure (VarNotFound var))      
 
 

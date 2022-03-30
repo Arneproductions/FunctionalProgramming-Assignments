@@ -77,25 +77,16 @@
         | V str -> lookup str 
         | WL -> wordLength
         | PV a -> arithEval a >>= pointValue 
-        | Add (a, b) -> add (arithEval a) (arithEval a) 
-        | Sub (a, b) -> binop (-) (arithEval a) (arithEval a)
-        | Mul (a, b) -> binop (*) (arithEval a) (arithEval a)
-        | Div (a, b) -> div (arithEval a) (arithEval a)
+        | Add (a, b) -> add (arithEval a) (arithEval b) 
+        | Sub (a, b) -> binop (-) (arithEval a) (arithEval b)
+        | Mul (a, b) -> binop (*) (arithEval a) (arithEval b)
+        | Div (a, b) -> div (arithEval a) (arithEval b)
         | Mod (a, b) -> arithEval a >>= (fun x -> arithEval b >>= fun y -> match y with 
                                                                             | v when v = 0 -> fail DivisionByZero
                                                                             | v -> ret (x % v))
-        | CharToInt c -> c |> fun c -> 
-                            let rec aux char =
-                                match char with 
-                                | C c -> ret c
-                                | CV a -> arithEval a >>= characterValue
-                                | ToUpper c ->  aux c >>= fun a -> ret (System.Char.ToUpper a)
-                                | ToLower c -> aux c >>= fun a -> ret (System.Char.ToLower a) 
-                                | IntToChar a -> arithEval a >>= fun b -> ret (System.Convert.ToChar b)
-                            
-                            aux c >>= fun ch -> ret (System.Convert.ToInt32 ch)
+        | CharToInt c -> charEval c >>= fun x -> ret (System.Convert.ToInt32 x)
 
-    let rec charEval c : SM<char> = 
+    and charEval c : SM<char> = 
         match c with 
         | C c -> ret c
         | CV a -> arithEval a >>= characterValue
@@ -148,41 +139,86 @@
         
     let prog = new StateBuilder()
 
-    let arithEval2 a =
+    let rec arithEval2 a =
         match a with
-        | N n -> ret n
-        | V str -> lookup str 
-        | WL -> wordLength
-        | PV a -> arithEval a >>= pointValue 
-        | Add (a, b) -> add (arithEval a) (arithEval a) 
-        | Sub (a, b) -> binop (-) (arithEval a) (arithEval a)
-        | Mul (a, b) -> binop (*) (arithEval a) (arithEval a)
-        | Div (a, b) -> div (arithEval a) (arithEval a)
-        | Mod (a, b) -> arithEval a >>= (fun x -> arithEval b >>= fun y -> match y with 
-                                                                            | v when v = 0 -> fail DivisionByZero
-                                                                            | v -> ret (x % v))
-        | CharToInt c -> c |> fun c -> 
-                            let rec aux char =
-                                match char with 
-                                | C c -> ret c
-                                | CV a -> arithEval a >>= characterValue
-                                | ToUpper c ->  aux c >>= fun a -> ret (System.Char.ToUpper a)
-                                | ToLower c -> aux c >>= fun a -> ret (System.Char.ToLower a) 
-                                | IntToChar a -> arithEval a >>= fun b -> ret (System.Convert.ToChar b)
+        | N n -> prog { return n }
+        | V str -> prog { return! lookup str }
+        | WL -> prog { return! wordLength } 
+        | PV a -> prog { let! x = arithEval a
+                         return! pointValue x} 
+        | Add (a, b) -> prog{ return! add (arithEval2 a) (arithEval2 a) }  
+        | Sub (a, b) -> prog { return! binop (-) (arithEval2 a) (arithEval2 a) }
+        | Mul (a, b) -> prog { return! binop (*) (arithEval2 a) (arithEval2 a)}
+        | Div (a, b) -> prog { return! div (arithEval2 a) (arithEval2 a) }
+        | Mod (a, b) -> prog { let! x = arithEval2 a
+                               let! y = arithEval2 b
+                               if y = 0 then 
+                                    return! fail DivisionByZero
+                               else 
+                                    return (x % y)}
+        | CharToInt c -> prog { let! x = charEval2 c
+                                return System.Convert.ToInt32 ((char)x)}
                             
-                            aux c >>= fun ch -> ret (System.Convert.ToInt32 ch)
-                            
-    let charEval2 c = failwith "Not implemented"
-    let rec boolEval2 b = failwith "Not implemented"
+    and charEval2 c = 
+        match c with 
+        | C c -> prog { return c }
+        | CV a -> prog { let! x = arithEval2 a
+                         return! characterValue x }
+        | ToUpper c ->  prog { let! x = charEval2 c
+                              return System.Char.ToUpper x}
+        | ToLower c -> prog { let! x = charEval2 c
+                              return System.Char.ToLower x}
+        | IntToChar a -> prog { let! x = arithEval2 a
+                                return System.Convert.ToChar x}
 
-    let stmntEval2 stm = failwith "Not implemented"
+    let rec boolEval2 b =
+        match b with 
+        | TT -> prog { return true }
+        | FF -> prog { return true }
+
+        | AEq (a, b) -> prog { return! binop (=) (arithEval2 a) (arithEval2 b) }
+        | ALt (a, b) -> prog { return! binop (<) (arithEval2 a) (arithEval2 b) }
+
+        | Not b -> prog { let! x = boolEval2 b  
+                          return (not(x)) }
+        | Conj (a, b) -> prog { return! binop (&&) (boolEval2 a) (boolEval2 b) }
+
+        | IsVowel c -> prog { let! x = charEval2 c 
+                              return isVowel x }
+        | IsLetter c -> prog { let! x = charEval2 c 
+                               return (System.Char.IsLetter x)}
+        | IsDigit c -> prog { let! x = charEval2 c 
+                              return (System.Char.IsDigit x)}
+
+    let rec stmntEval2 stm = 
+        match stm with 
+        | Declare str -> prog { return! declare str}
+        | Ass (str, exp) -> prog { let _ = declare str 
+                                   let! x = arithEval2 exp 
+                                   return! update str x}
+        | Skip -> prog { return () }
+        | Seq (s1, s2) -> prog { let! x = stmntEval2 s1
+                                 return! stmntEval2 s2 } 
+        | ITE (exp, s1, s2) -> prog { let! b = boolEval2 exp 
+                                      if b then return! stmntEval2 s1 else return! stmntEval2 s2 } 
+        | While (exp, stm) -> prog { let! b = boolEval2 exp  
+                                     if b then 
+                                        let _ = stmntEval2 stm  
+                                        return! stmntEval2 stm 
+                                     else return () }
 
 (* Part 4 (Optional) *) 
 
     type word = (char * int) list
     type squareFun = word -> int -> int -> Result<int, Error>
 
-    let stmntToSquareFun stm = failwith "Not implemented"
+    let stmntToSquareFun stm: squareFun = fun word pos acc -> prog {
+        let state = mkState [("_pos_", pos); ("_acc_", acc); ("_result_", 0)] word ["_pos_"; "_acc_"; "_result_"]
+        let rees =  stmntEval2 stm
+        let res = lookup "_result_"
+
+        return! evalSM state res
+    }
 
 
     type coord = int * int
